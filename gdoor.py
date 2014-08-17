@@ -38,11 +38,12 @@ ok_to_open = False
 # Determine if the current time is ok to let the 
 # door open automatically
 def check_curfew():
-	global curfew_off, current_time, curfew_on, gdoor_curfew
+	global curfew_off, current_time, curfew_on, gdoor_curfew, ok_to_open
 	if curfew_off <= current_time <= curfew_on:
 		gdoor_curfew = False
 	else:
 		gdoor_curfew = True
+		ok_to_open = False
 
 # Checks the status of the Garage Door to see if it's fully open or
 # fully closed. If no lock is set, a 10 min timer is started to close

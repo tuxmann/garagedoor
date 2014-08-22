@@ -38,12 +38,19 @@ ok_to_open = False
 # Determine if the current time is ok to let the 
 # door open automatically
 def check_curfew():
-	global curfew_off, current_time, curfew_on, gdoor_curfew, ok_to_open
+	global curfew_off, current_time, curfew_on, gdoor_curfew, ok_to_open, j_away_previous
 	if curfew_off <= current_time <= curfew_on:
 		gdoor_curfew = False
 	else:
+		# Set curfew to True to prevent Phone checking.
 		gdoor_curfew = True
+		# Set ok_to_open to false to prevent the door from opening once
+		# the curfew is off if owner leaves before curfew is on
 		ok_to_open = False
+		# Set j_away_previous to false to ensure that door will open if 
+		# owner leaves before curfew starts, comes home during curfew 
+		# and leaves before curfew ends
+		j_away_previous = False
 
 # Checks the status of the Garage Door to see if it's fully open or
 # fully closed. If no lock is set, a 10 min timer is started to close
@@ -91,12 +98,7 @@ def check_open():
 # Scanning only one IP addr or a limited number of IP addr is significantly faster.
 # Running nmap and scanning all 255 addr was taking upwards of 5 seconds or longer.
 def check_phones():
-	global gdoor_curfew
-	global timer_20b
-	global j_away
-	global j_away_previous
-	global timer_20
-	global ok_to_open
+	global gdoor_curfew, timer_20b, j_away, j_away_previous, timer_20, ok_to_open
 	# If the curfew is active, checking for phones will be skipped.
 	if gdoor_curfew == False:
 		# Var will come back with the MAC address or the response will be empty.

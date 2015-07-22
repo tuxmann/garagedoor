@@ -64,7 +64,7 @@ def check_curfew():
 # If it's in the middle, both variables will be false.
 # Both true, should be impossible. It should indicate an error.
 def check_open():
-	global gdoor_open, gdoor_closed, gdoor_lock, j_away, timer_10, ok_to_close
+	global gdoor_open, gdoor_closed, gdoor_lock, j_away, timer1, ok_to_close
 
 	gdoor_closed = pfd.input_pins[6].value
 	gdoor_open = pfd.input_pins[7].value
@@ -75,40 +75,39 @@ def check_open():
 	# Garage door is fully closed
 	if gdoor_closed == True and gdoor_open == False:
 			#print "gdoor_closed is true, trying to reset time."
-			timer_10 = datetime.time(0,00).strftime("%H:%M:%S")
+			timer1 = datetime.time(0,00).strftime("%H:%M:%S")
 			ok_to_close = False
 	
 	# Garage door is fully open
 	elif gdoor_open == True and gdoor_closed == False:
-		#print "gdoor_open is true"
-		#if gdoor_lock == True and j_away == True:
-			##if j_away == True: # add "or p_away "
-			##print "closing garage door because both owners left."
-			#push_button(0.5)
-			#time.sleep(20)
-			#gdoor_lock = False
-			#ok_to_close = False
-			## Check to see if door really closed
-		#elif gdoor_lock == True and j_away == False:
-			#print "The door has been locked open & the owner is home"
-		#	ok_to_close = False
+		print "gdoor_open is true"
+		if gdoor_lock == True and j_away == True:
+			if j_away == True: # add "or p_away "
+				print "closing garage door because both owners left."
+				push_button(0.5)
+				time.sleep(20)
+				gdoor_lock = False
+				ok_to_close = False
+				## Check to see if door really closed
+		elif gdoor_lock == True and j_away == False:
+			print "The door has been locked open & the owner is home"
+			ok_to_close = False
 		else:
-			if ok_to_close == True:
-				if timer_10 < current_time:
-					#print "Closing garage door because owners are home but didn't lock door open"
-					push_button(0.5)
-					ok_to_close = False
-					time.sleep(30)
-					# wait 30sec, check if door is closed
+			if ok_to_close == True and timer1 < current_time:
+				print "Closing garage door because owners are home but didn't lock door open"
+				push_button(0.5)
+				ok_to_close = False
+				time.sleep(30)
+				# wait 30sec, check if door is closed
 			else:
-				timer_10 = (datetime.datetime.now() + datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
+				timer1 = (datetime.datetime.now() + datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
 				ok_to_close = True
-				#print "Setting timer for 10 minutes because door is not locked open"
+				print "Setting timer for 10 minutes because door is not locked open"
 	
 	# Garage door is somewhere in the middle. We don't know if the 
 	# door will go up or down. We will press the button, wait, then check.
 	# If the door is not fully closed, we'll try to close the door.
-	elif gdoor_open == False:
+	#elif gdoor_open == False:
 		
 
 # Scanning only one IP addr or a limited number of IP addr is significantly faster.

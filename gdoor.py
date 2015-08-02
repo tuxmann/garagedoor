@@ -1,22 +1,37 @@
-# Add your own MAC address below and replace AA:BB:CC:DD:FF:GG
-# Split the nmap feature into a separate routine (def) so
-# that it can be summoned by check_open & check_phones.
+# INSTRUCTIONS:
+# 1. 	This code allows for GPIO or PiFace Digital to be used
+#	Comment out code you don't need.
+# 2.	Add your own MAC address below and replace AA:BB:CC:DD:FF:GG
+# 3.	Adjust Curfew time to suit your needs.
 
 import datetime
 import os
 import pifacedigitalio
+import RPi.GPIO as GPIO
 import time
 
-print "Starting Garage Door Script"
 # Create & Init a PiFace Digtal object
 pfd = pifacedigitalio.PiFaceDigital()
 pifacedigitalio.init()
 
+# Create & Init RPi GPIO
+GPIO.setmode(GPIO.BOARD)
+GPIO.setwarnings(False)
+GPIO.setup(11, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+GPIO.setup(13, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+GPIO.setup(22, GPIO.OUT)
+
+
 ################################
 ### Create default variables ###
 ################################
-gdoor_closed = pfd.input_pins[7].value
-gdoor_open = pfd.input_pins[6].value
+# IF YOU CHANGE THIS, CHANGE THE get_status() FUNCTION TOO!!!
+# RPi.GPIO inputs will be inverted for the debugging convenience.
+gdoor_closed = pfd.input_pins[7].value			# For PiFace Digital Interface
+gdoor_open = pfd.input_pins[6].value			# For PiFace Digital Interface
+gdoor_closed = not GPIO.input(13)			# For RPi GPIO Interface
+gdoor_open = not GPIO.input(11)				# For RPi GPIO Interface
+
 gdoor_curfew = True
 gdoor_lock = False
 
@@ -27,6 +42,7 @@ ok_to_open = False
 ok_to_close = False
 partially_open = 1
 retry = 3
+status_count = 0
 var = " "
 
 # Ensure off is lower than on times.
@@ -38,76 +54,45 @@ timer2 = (datetime.datetime.now()).strftime("%H:%M:%S")
 timer2b = False
 timer_minutes = 20
 
-	#################
-	### Functions ###
-	#################
+###################################
+### 	  Functions 		###
+###################################
 
-# Decide if the curfew is on or off
-def check_curfew():
-	global curfew_off, current_time, curfew_on, gdoor_curfew, ok_to_open, j_away_previous
-	
-	if curfew_off <= current_time <= curfew_on:
-		gdoor_curfew = False
-	
-	else:
-		gdoor_curfew = True
-		ok_to_open = False
-		j_away_previous = False
-
-# Checks the status of the Garage Door. If no lock is set, a timer is 
+# Get the status of the Garage Door. If no lock is set, a timer is 
 # started to close the Garage Door. If no one is home, the 
 # door will shut immediately. NEED TO RUN NMAP TO CHECK FOR PHONES
 
-# The circuit is a 5V/Open circuit. 
-# If the door is fully close, gdoor_closed will be true.
-# If the door is fully open, gdoor_open will be true.
-# If it's in the middle, both variables will be false.
-# Both true, should be impossible. It should indicate an error.
+# The owner comes home and presses the button for the garage door before
+# the phone is detected, we will do nothing if the door is going up.
+
 def check_open():
-	global gdoor_open, gdoor_closed, gdoor_lock, j_away, timer1, ok_to_close
+	global gdoor_open, gdoor_closed, gdoor_lock, j_away, timer1, ok_to_close, status_count
 
-	gdoor_closed = pfd.input_pins[6].value
-	gdoor_open = pfd.input_pins[7].value
-
-	#simulate gdoor_lock with a switch. gdoor_lock should be set through a webpage
-	#gdoor_lock = pfd.input_pins[2].value
+	get_status()
+	
+	# Garage door is in the middle
+	if gdoor_closed == False and gdoor_open == False:
+		if status_count > 0:
+			status_count = status_count + 1
+			print status_count
+		if status_count < 0:
+			status_count = status_count - 1
+			print status_count
+		if status_count > 30:
+			print "stuck in middle"
+		if status_count < -30:
+			print "stuck in middle"
 	
 	# Garage door is fully closed
-	if gdoor_closed == True and gdoor_open == False:
-			#print "gdoor_closed is true, trying to reset time."
-			timer1 = datetime.time(0,00).strftime("%H:%M:%S")
-			ok_to_close = False
-	
+	elif gdoor_closed == True and gdoor_open == False:
+		print "gdoor_closed is true"
+		timer1 = datetime.time(0,00).strftime("%H:%M:%S")
+		#ok_to_close = False
+		status_count = -1 
 	# Garage door is fully open
 	elif gdoor_open == True and gdoor_closed == False:
 		print "gdoor_open is true"
-		if gdoor_lock == True and j_away == True:
-			if j_away == True: # add "or p_away "
-				print "closing garage door because both owners left."
-				push_button(0.5)
-				time.sleep(20)
-				gdoor_lock = False
-				ok_to_close = False
-				## Check to see if door really closed
-		elif gdoor_lock == True and j_away == False:
-			print "The door has been locked open & the owner is home"
-			ok_to_close = False
-		else:
-			if ok_to_close == True and timer1 < current_time:
-				print "Closing garage door because owners are home but didn't lock door open"
-				push_button(0.5)
-				ok_to_close = False
-				time.sleep(30)
-				# wait 30sec, check if door is closed
-			else:
-				timer1 = (datetime.datetime.now() + datetime.timedelta(minutes=10)).strftime("%H:%M:%S")
-				ok_to_close = True
-				print "Setting timer for 10 minutes because door is not locked open"
-	
-	# Garage door is somewhere in the middle. We don't know if the 
-	# door will go up or down. We will press the button, wait, then check.
-	# If the door is not fully closed, we'll try to close the door.
-	#elif gdoor_open == False:
+		status_count = 1
 		
 
 # Scanning only one IP addr or a limited number of IP addr is significantly faster.
@@ -121,8 +106,11 @@ def check_phones():
 	if var != "" and ok_to_open == True:
 		print" "
 		print datetime.datetime.now()
-		print "Opening door for the owner of the phone. Come in."
-		garage_open()
+		if -30 < status_count < -1:
+			print "Door is in the process of opening..."
+		if  status_count == -1:
+			print "Opening door for the owner of the phone. Come in."
+			garage_open()
 		ok_to_open = False
 	# Run nmap three or more times to verify the phone is really off the network.
 	while var == "": 
@@ -132,7 +120,7 @@ def check_phones():
 			retry = retry - 1
 			time.sleep(0.5)
 		if retry <= 0:
-			print "Retries Gone!"
+			#print "Retries Gone!"
 			j_away = True
 			# Check if the current time is past the trigger time.
 			if j_away == j_away_previous and ok_to_open == False and timer2 < current_time:
@@ -151,23 +139,29 @@ def check_phones():
 		j_away = False
 		j_away_previous = False
 
+def get_status():
+	global gdoor_open, gdoor_closed
+	gdoor_closed = pfd.input_pins[7].value		# For PiFace Digital Interface
+	gdoor_open = pfd.input_pins[6].value		# For PiFace Digital Interface
+	gdoor_closed = not GPIO.input(13)			# For RPi GPIO Interface
+	gdoor_open = not GPIO.input(11)				# For RPi GPIO Interface
+	
 # function pushes the garage door switch for the specified "push_time"	
 def push_button(push_time):
 	pfd.leds[0].toggle()
+	GPIO.output(22, GPIO.HIGH)
 	time.sleep(push_time)
+	GPIO.output(22, GPIO.LOW)
 	pfd.leds[0].toggle()
 
 def garage_open():
 	global partially_open
-	gdoor_closed = pfd.input_pins[6].value
-	gdoor_open = pfd.input_pins[7].value
-	print "closed switch =", gdoor_closed
-	print "  open switch =", gdoor_open
+	get_status()
+	print "closed = %d, open = %d" % (gdoor_closed, gdoor_open)
 	print " "
 
 	while gdoor_open == False and gdoor_closed == False:
-		gdoor_closed = pfd.input_pins[6].value
-		gdoor_open = pfd.input_pins[7].value
+		get_status()
 		time.sleep(0.2)
 		if partially_open == True:
 			print "Door stuck in the middle, pressed door switch"
@@ -187,15 +181,19 @@ def garage_open():
 
 
 # Start main program and keep looping 
+print "Starting Garage Door Script"
+
 while True:
 	current_time = (datetime.datetime.now()).strftime("%H:%M:%S")
-	check_curfew()
+	check_open()
 	
-	if gdoor_curfew == False:
+	if curfew_off <= current_time <= curfew_on:	# Curfew is off
 		check_phones()
 	
-	# check_open()
-	
+	else:										# Curfew is on
+		ok_to_open = False
+		j_away_previous = False
+
 	# Reduce CPU load by including a delay. Delay can be safely removed and Pi will work fine.
 	# Possible downside may include increased phone battery consumption.
 	if j_away == False:

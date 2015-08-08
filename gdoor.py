@@ -66,7 +66,7 @@ timer_minutes = 20
 # the phone is detected, we will do nothing if the door is going up.
 
 def check_open():
-	global gdoor_open, gdoor_closed, gdoor_lock, j_away, timer1, ok_to_close, status_count
+	global gdoor_open, gdoor_closed, gdoor_lock, status_count
 
 	get_status()
 	
@@ -86,11 +86,9 @@ def check_open():
 	# Garage door is fully closed
 	elif gdoor_closed == True and gdoor_open == False:
 		print "gdoor_closed is true"
-		timer1 = datetime.time(0,00).strftime("%H:%M:%S")
-		#ok_to_close = False
 		status_count = -1 
 	# Garage door is fully open
-	elif gdoor_open == True and gdoor_closed == False:
+	elif gdoor_closed == False and gdoor_open == True:
 		print "gdoor_open is true"
 		status_count = 1
 		
@@ -112,10 +110,17 @@ def check_phones():
 			print "Opening door for the owner of the phone. Come in."
 			garage_open()
 		ok_to_open = False
+
+	# The phone is home and it's not ok to open the garage door automatically.
+	if var != "" and ok_to_open == False:
+		retry = 3
+		j_away = False
+		j_away_previous = False
+
 	# Run nmap three or more times to verify the phone is really off the network.
 	while var == "": 
 		var = os.popen('sudo nmap -sP 192.168.1.3 | grep AA:BB:CC:DD:FF:GG').read()
-		if var == "" and retry >= 0:
+		if var == "" and retry > 0:
 			print "Decrementing Retries"
 			retry = retry - 1
 			time.sleep(0.5)
@@ -133,11 +138,6 @@ def check_phones():
 				timer2 = (datetime.datetime.now() + datetime.timedelta(minutes=timer_minutes)).strftime("%H:%M:%S")
 				j_away_previous = True
 			break	
-	# The phone is home and it's not ok to open the garage door automatically.
-	if var != "" and ok_to_open == False:
-		retry = 3
-		j_away = False
-		j_away_previous = False
 
 def get_status():
 	global gdoor_open, gdoor_closed
@@ -160,7 +160,10 @@ def garage_open():
 	print "closed = %d, open = %d" % (gdoor_closed, gdoor_open)
 	print " "
 
-	while gdoor_open == False and gdoor_closed == False:
+	if gdoor_closed == True and gdoor_open == False:
+		push_button(0.5)
+
+	while gdoor_closed == False and gdoor_open == False:
 		get_status()
 		time.sleep(0.2)
 		if partially_open == True:
@@ -176,9 +179,6 @@ def garage_open():
 		if gdoor_closed == False and gdoor_open == True:
 			print "Door already open, nothing to do"
 			partially_open = 1
-	if gdoor_open == False and gdoor_closed == True:
-		push_button(0.5)
-
 
 # Start main program and keep looping 
 print "Starting Garage Door Script"

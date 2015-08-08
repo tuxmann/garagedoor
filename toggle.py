@@ -16,7 +16,6 @@ GPIO.setup(22, GPIO.OUT)
 GPIO.output(22, GPIO.HIGH)
 time.sleep(0.5)
 GPIO.output(22, GPIO.LOW)
-GPIO.cleanup()
 
 # Close relay 0 for 0.5 seconds
 pfd.leds[0].toggle()

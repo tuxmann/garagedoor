@@ -17,8 +17,8 @@ pifacedigitalio.init()
 # Create & Init RPi GPIO
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
-GPIO.setup(11, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
-GPIO.setup(13, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+GPIO.setup(11, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)	# open  sensor
+GPIO.setup(13, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)	#closed sensor
 GPIO.setup(22, GPIO.OUT)
 
 
@@ -180,8 +180,16 @@ def garage_open():
 			print "Door already open, nothing to do"
 			partially_open = 1
 
+# interrupt for detection of the garage door opening. This is a way to dimiss 
+# the "channel" argument. TypeError: my_callback() takes no arguments (1 given)
+def interrupt_check_open(channel):
+	check_open()
+	
 # Start main program and keep looping 
 print "Starting Garage Door Script"
+
+# Interrupts
+GPIO.add_event_detect(13, GPIO.RISING, callback = interrupt_check_open, bouncetime=100)
 
 while True:
 	current_time = (datetime.datetime.now()).strftime("%H:%M:%S")

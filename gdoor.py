@@ -143,8 +143,8 @@ def get_status():
 	global gdoor_open, gdoor_closed
 	gdoor_closed = pfd.input_pins[7].value		# For PiFace Digital Interface
 	gdoor_open = pfd.input_pins[6].value		# For PiFace Digital Interface
-	gdoor_closed = not GPIO.input(13)			# For RPi GPIO Interface
-	gdoor_open = not GPIO.input(11)				# For RPi GPIO Interface
+	gdoor_closed = not GPIO.input(13)		# For RPi GPIO Interface
+	gdoor_open = not GPIO.input(11)			# For RPi GPIO Interface
 	
 # function pushes the garage door switch for the specified "push_time"	
 def push_button(push_time):
@@ -173,7 +173,7 @@ def garage_open():
 	
 		if gdoor_closed == True and gdoor_open == False:
 			print "Door closed, opening door now."
-			push_button(2)		# Introduce enough delay for the sensors to change state
+			push_button(2)			# Introduce enough delay for the sensors to change state
 			partially_open = 1
 		
 		if gdoor_closed == False and gdoor_open == True:
@@ -198,7 +198,7 @@ while True:
 	if curfew_off <= current_time <= curfew_on:	# Curfew is off
 		check_phones()
 	
-	else:										# Curfew is on
+	else:						# Curfew is on
 		ok_to_open = False
 		j_away_previous = False
 
